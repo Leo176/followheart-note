@@ -4,12 +4,16 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.springframework.stereotype.Service;
 
 import com.leo.dao.note.HbaseDao;
 import com.leo.dao.note.RedisDao;
 import com.leo.domain.note.Notebook;
 import com.leo.service.note.NoteService;
+import com.leo.util.Constants;
 
 @Service
 public class NoteServiceImpl implements NoteService {
@@ -31,7 +35,19 @@ public class NoteServiceImpl implements NoteService {
 		//  1 如果皆为空则说明真的为空，无需更新至redis中
 		//  2否则更新至redis中
 		if(notebookList1==null) {
-			notebookList2=hbaseDao.getAllNotebooks(userName);
+			ResultScanner results=hbaseDao.getAllNotebooks(userName);
+			//逐条读取至Notebook Bean中
+			for(Result result:results) {
+				Notebook book=null;
+				book.setRowkey(Bytes.toString(result.getRow())); //rowkey
+				book.setNotebookName(Bytes.toString(result.getValue(
+						Bytes.toBytes(Constants.NOTEBOOK_FAMILY), Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NAME))));
+				book.setCreateTime(Bytes.toString(result.getValue(
+						Bytes.toBytes(Constants.NOTEBOOK_FAMILY), Bytes.toBytes(Constants.NOTEBOOK_COLUMN_CREATETIME))));
+				book.setState(Bytes.toString(result.getValue(
+						Bytes.toBytes(Constants.NOTEBOOK_FAMILY), Bytes.toBytes(Constants.NOTEBOOK_COLUMN_STATUS))));
+			notebookList2.add(book);
+			}
 			if(notebookList2==null) {
 				//无需更新redis
 			}

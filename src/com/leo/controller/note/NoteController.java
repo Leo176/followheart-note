@@ -22,8 +22,8 @@ import com.leo.util.Constants;
 @RequestMapping("/note")
 public class NoteController {
 	
-	private static Logger logger = LoggerFactory
-			.getLogger(NoteController.class);
+	
+	private static Logger logger = LoggerFactory.getLogger(NoteController.class);
 	
 	@Resource
 	private NoteService noteService;
