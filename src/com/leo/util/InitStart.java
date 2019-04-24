@@ -10,6 +10,7 @@ public class InitStart {
 	//此方法spring后端一运行会立即执行
 	@SuppressWarnings("unused")
 	private void InitSystem() {
+		System.setProperty("hadoop.home.dir", "E:\\hadoop-common-bin-master\\hadoop-common-bin-master\\2.7.1");
 		ClassLoader loader = InitStart.class.getClassLoader();
 		
 		try {

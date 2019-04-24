@@ -3,6 +3,7 @@ package com.leo.util;
 
 import java.util.List;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +41,14 @@ public class RedisTool {
 		// TODO Auto-generated method stub
 		Jedis jedis = RedisTool.getJedis();
 		List<String> bookList=null;
+		System.out.println("RedisTool中 userName为： "+userName);
+		System.out.println("从Redis中获取笔记本数据---------");
 		try {
 			//获取key为{userName}的所有value值，每一个值皆为类似senfeng_134223232343|aaaddd|1401761871307|0这样的字符串
 			bookList = jedis.lrange(userName, 0, -1);
+			if(bookList==null) {
+				System.out.println("RedisTool中 获取数据为空");
+			}
 			
 		} catch (JedisConnectionException e) {
 			if (null != jedis) {
@@ -56,6 +62,25 @@ public class RedisTool {
 		}
 		return bookList;
 
+	}
+
+
+	public static boolean addNotebook(String userName, String redisValueString) {
+		
+		Jedis jedis=RedisTool.getJedis();
+		//插入
+		Long valueNum=jedis.rpush(Bytes.toBytes(userName),Bytes.toBytes(redisValueString));
+		if(valueNum>0)
+			return true;
+		else return false;
+		
+	}
+
+
+	public static void deleteNewAdded(String userName) {
+		// TODO Auto-generated method stub
+		Jedis jedis=RedisTool.getJedis();
+		jedis.rpop(Bytes.toBytes(userName));
 	}
 
 }

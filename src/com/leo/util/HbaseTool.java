@@ -16,10 +16,11 @@ public class HbaseTool {
 	public static Admin admin;
 	//静态代码段进行连接
 	static {
+		System.setProperty("hadoop.home.dir","E:\\hadoop-common-bin-master\\hadoop-common-bin-master\\2.7.1");
 		configuration = HBaseConfiguration.create();
 		configuration.set("hbase.zookeeper.property.clientPort", Constants.HBASE_CLIENT_PORT);  
         configuration.set("hbase.zookeeper.quorum", Constants.HBASE_ZOOKEEPER_QUORUM);  
-        configuration.set("hbase.master",Constants.HBASE_MASTER); 
+        //configuration.set("hbase.master",Constants.HBASE_MASTER); 
         try {
 			connection = ConnectionFactory.createConnection(configuration);
 			admin = connection.getAdmin();

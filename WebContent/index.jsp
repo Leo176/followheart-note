@@ -7,6 +7,11 @@
 <title>welcome page</title>
 </head>
 <body>
-欢迎来到随心云笔记
+<p>欢迎来到随心云笔记</p>
+<a href="./note/getAllNotebooks" id="getAllNotebooks">获取所有笔记本</a>
+<a href="./note/addNotebook/newnotebook" id="addNotebook">新建笔记本</a>
+<a href="./note//addNote/newnote" id="addNote">新建笔记</a>
+<%session.setAttribute("user_info","test");%>
+<%session.setAttribute("nbRowkey","test_133256");%>
 </body>
 </html>

@@ -31,12 +31,12 @@ public class Constants {
 
 	
 	/**rowkey的分隔符“_”*/
-	public static String split="_";
+	public static String rowkey_split="_";
 	
 	/**特殊笔记文件夹的标记*/
-	public static String STAR=split+"star";  //收藏夹 user_star
-	public static String RECYCLE=split+"recycle";  //回收站 user_recycle
-	public static String ACTIVITY=split+"activity";  //活动夹  user_activity
+	public static String STAR=rowkey_split+"star";  //收藏夹 user_star
+	public static String RECYCLE=rowkey_split+"recycle";  //回收站 user_recycle
+	public static String ACTIVITY=rowkey_split+"activity";  //活动夹  user_activity
 	
 
 	

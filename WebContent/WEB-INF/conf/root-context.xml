@@ -18,6 +18,7 @@
 	<context:component-scan base-package="com.leo">
 		<context:exclude-filter type="regex"
 			expression="com.leo.controller.*" />
+				
 	</context:component-scan>
 
 </beans>

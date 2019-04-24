@@ -19,7 +19,9 @@
 	<mvc:resources mapping="/selfcheck/**" location="/selfcheck/" />
 	
 		<!-- 扫描 -->
-	<context:component-scan base-package="com.leo.controller.*" />
+	<context:component-scan base-package="com.leo.controller.login" />
+	<context:component-scan base-package="com.leo.controller.note" />
+	
 
 	
 	<!-- 匹配页面，前后缀 -->

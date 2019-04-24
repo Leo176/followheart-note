@@ -9,4 +9,8 @@ public interface RedisDao {
 
 	List<Notebook> getAllNotebooks(String userName);
 
+	boolean addNotebook(String userName, String redisValueString);
+
+	void deleteNewAdded(String userName);
+
 }
