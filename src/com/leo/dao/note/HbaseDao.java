@@ -10,8 +10,21 @@ public interface HbaseDao {
 
 	ResultScanner getAllNotebooks(String userName);
 
-	boolean addNotebook(String rowkey, String notebookName, Long createTime, int status);
+	boolean addNotebook(String rowkey, String notebookName, String createTime, String status);
 
-	boolean addNotebookList(String nbRowkey, String nRowkey, String noteName, Long createTime, int status);
+
+	boolean updateNotebook(String userName, String createTime, String status, String oldNotebookName,
+			String newNotebookName);
+
+	boolean deleteNotebook(String rowKey);
+	
+	boolean addNotebookList(String nbRowkey, String nRowkey, String noteName, String createTime, String status);
+
+	boolean addToNoteTable(String nRowkey, String noteName, String createTime, String status);
+
+	boolean updateNotebookList(String nbRowkey, String nRowkey, String oldNoteName, String newNoteName,
+			String createTime, String status);
+
+	boolean updateToNoteTable(String nRowkey, String newNoteName, String createTime, String status);
 
 }

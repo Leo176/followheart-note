@@ -46,9 +46,12 @@ public class RedisTool {
 		try {
 			//获取key为{userName}的所有value值，每一个值皆为类似senfeng_134223232343|aaaddd|1401761871307|0这样的字符串
 			bookList = jedis.lrange(userName, 0, -1);
-			if(bookList==null) {
+			
+			if(bookList.isEmpty()) {
 				System.out.println("RedisTool中 获取数据为空");
 			}
+			else
+				System.out.println("RedisTool中 获取数据不为空");
 			
 		} catch (JedisConnectionException e) {
 			if (null != jedis) {
@@ -77,10 +80,45 @@ public class RedisTool {
 	}
 
 
+	/**
+	 * 修改bookName
+	 * @param userName
+	 * @param newNotebookString index
+	 * @return
+	 */
+	public static boolean updateNotebookname(String userName, String newBookNameString,int index) {
+		// TODO Auto-generated method stub
+		Jedis jedis=RedisTool.getJedis();
+		jedis.lset(Bytes.toBytes(userName),index,Bytes.toBytes(newBookNameString));
+		return true;
+	}
+	
+	/**
+	 * 删除notebook
+	 * @param userName
+	 * @param newNotebookString index
+	 * @return
+	 */
+	public static boolean deleteNotebook(String userName, String notebookString) {
+		// TODO Auto-generated method stub
+		Jedis jedis=RedisTool.getJedis();
+		/**
+		 * Remove the first count occurrences of the value element from the list. 
+		 * If count is zero all the elements are removed. 
+		 * Returns:Integer Reply, specifically: The number of removed elements if the operation succeeded
+		 */
+		if(jedis.lrem(userName, 0, notebookString)>=1)
+			return true;
+		else 
+			return false;
+	}
 	public static void deleteNewAdded(String userName) {
 		// TODO Auto-generated method stub
 		Jedis jedis=RedisTool.getJedis();
 		jedis.rpop(Bytes.toBytes(userName));
 	}
+
+
+
 
 }

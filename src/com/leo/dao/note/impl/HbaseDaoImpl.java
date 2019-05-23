@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -25,6 +26,8 @@ import com.leo.dao.note.HbaseDao;
 import com.leo.domain.note.Notebook;
 import com.leo.util.Constants;
 import com.leo.util.HbaseTool;
+import com.leo.util.NoteStringUtil;
+import com.leo.util.RowkeyUtil;
 
 
 @Service("hbaseDaoImpl")
@@ -69,7 +72,7 @@ public class HbaseDaoImpl implements HbaseDao {
 
 	//hbase中插入数据
 	@Override
-	public boolean addNotebook(String rowkey, String notebookName, Long createTime, int status) {
+	public boolean addNotebook(String rowkey, String notebookName, String createTime, String status) {
 		// TODO Auto-generated method stub
 		try {
 		Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NBTABLENAME));
@@ -94,9 +97,75 @@ public class HbaseDaoImpl implements HbaseDao {
 		return true;
 	}
 
-	//添加新的笔记，在notebook表的notelist中添加信息
+	
+	
+	//hbase中修改Notebook数据(对于同一个key的指定列族中的列重新插入数据，就是修改数据)
 	@Override
-	public boolean addNotebookList(String nbRowkey, String nRowkey, String noteName, Long createTime, int status) {
+	public boolean updateNotebook(String userName,String createTime,String status
+			, String oldNotebookName, String newNotebookName) {
+		
+		String rowkey=RowkeyUtil.getRowkey(userName, createTime);
+		return addNotebook(rowkey, newNotebookName, createTime, status);
+		
+	}
+	
+	
+	//hbase中删除Notebook
+	@Override
+	public boolean deleteNotebook(String rowKey) {
+		
+		try {
+			
+		Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NBTABLENAME));
+		Delete deleteRow = new Delete(Bytes.toBytes(rowKey)); //删除一个行
+		table.delete(deleteRow);
+		}catch (IOException e) {
+			// TODO Auto-generated catch block
+			logger.error("HbaseDao 中删除笔记本失败-------rowkey" + rowKey
+					+ "删除笔记本异常|方法:deleteNotebook", e);
+			e.printStackTrace();
+			return false;
+		}
+
+		return true;
+ 
+		
+	}
+	
+	/**
+	 *添加新的笔记-----在note表中添加信息
+	 * @param nRowkey
+	 * @param notebookName
+	 * @param createTime
+	 * @param status
+	 * @return
+	 */
+	@Override
+	public boolean addToNoteTable(String nRowkey, String noteName, String createTime, String status) {
+		
+		try {
+			
+	        Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NTABLENAME));
+	        Put put = new Put(Bytes.toBytes(nRowkey));
+	        //插入新的
+	        put.add(Bytes.toBytes(Constants.NOTE_INFO_FAMILY), 
+	        		Bytes.toBytes(Constants.NOTE_COLUMN_NAME), Bytes.toBytes(noteName));
+	        put.add(Bytes.toBytes(Constants.NOTE_INFO_FAMILY), 
+	        		Bytes.toBytes(Constants.NOTE_COLUMN_CREATETIME), Bytes.toBytes(createTime));
+	        put.add(Bytes.toBytes(Constants.NOTE_INFO_FAMILY), 
+	        		Bytes.toBytes(Constants.NOTE_COLUMN_STATUS), Bytes.toBytes(status));
+	        table.put(put);
+	        table.close();
+	} catch (IOException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+	return true;
+	}
+	
+	//添加新的笔记-----在notebook表的notelist中添加信息
+	@Override
+	public boolean addNotebookList(String nbRowkey, String nRowkey, String noteName, String createTime, String status) {
 		// TODO Auto-generated method stub
 		
 		/*获取某单元格数据*/
@@ -139,5 +208,80 @@ public class HbaseDaoImpl implements HbaseDao {
 		}
 		return true;
 	}
+
+	
+	
+	/**
+	 * 修改笔记名字-----在notebook表的notelist中修改信息
+	 * 笔记本下的笔记列表，note之间由","隔开   （noteRowKey1|name1| createTime1| status1,noteRowKey2|name2| createTime2| status2）
+	 * @param nbRowkey
+	 * @param nRowkey
+	 * @param noteName
+	 * @param createTime
+	 * @param status
+	 * @return
+	 */
+		@Override
+		public boolean updateNotebookList(String nbRowkey, String nRowkey, String oldNoteName, String newNoteName,String createTime, String status) {
+			// TODO Auto-generated method stub
+			
+			/*获取某单元格数据*/
+			/**	   * @param tableName 表名
+				   * @param rowKey 行键
+				   * @param colFamily 列族
+				   * @param col 列限定符
+			        * @throws IOException     */
+			try {
+			        Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NBTABLENAME));
+					
+			        Get get = new Get(Bytes.toBytes(nbRowkey));
+				    get.addColumn(Bytes.toBytes(Constants.NOTEBOOK_FAMILY),Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NOTELIST));
+			        //获取的result数据是结果集，还需要格式化输出想要的数据才行
+			        Result result = table.get(get);
+			        String oldNote=nRowkey+Constants.REDIS_SPLIT+oldNoteName+Constants.REDIS_SPLIT+createTime
+							+Constants.REDIS_SPLIT+status;
+			        String newNote=nRowkey+Constants.REDIS_SPLIT+newNoteName+Constants.REDIS_SPLIT+createTime
+							+Constants.REDIS_SPLIT+status;
+			       // Get the latest version of the specified column. Note: this call clones the value content
+			        //of the hosting Cell. See getValueAsByteBuffer(byte[], byte[]), etc., or listCells() 
+			       // if you would avoid the cloning
+			        
+			       //得到原notelist字符串
+			        	String oldNoteList=new String(result.getValue(Constants.NOTEBOOK_FAMILY.getBytes()
+			        			 ,Constants.NOTEBOOK_COLUMN_NOTELIST.getBytes()));
+			        	//得到删去之后的notelist字符串
+			        	 String newNoteList=NoteStringUtil.deleteSubString(oldNote, oldNoteList);
+			        	 //新增修改后的note
+			        	 newNoteList=newNoteList+","+newNote;
+			    		  
+			        Put put = new Put(Bytes.toBytes(nbRowkey));
+			        //插入新的
+			        put.add(Bytes.toBytes(Constants.NOTEBOOK_FAMILY), 
+			        		Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NOTELIST), Bytes.toBytes(newNoteList));
+			        table.put(put);
+			        table.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return true;
+		}
+		
+		
+		/**
+		 * hbase中修改note表中的数据(对于同一个key的指定列族中的列重新插入数据，就是修改数据)
+		 * @param nRowkey
+		 * @param newNotebookName
+		 * @param createTime
+		 * @param status
+		 * @return
+		 */
+		@Override
+		public boolean updateToNoteTable(String nRowkey,String newNoteName,String createTime,String status
+			 ) {
+			return addToNoteTable(nRowkey, newNoteName, createTime, status);
+			
+		}
+		
 
 }

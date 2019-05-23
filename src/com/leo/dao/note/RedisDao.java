@@ -12,5 +12,17 @@ public interface RedisDao {
 	boolean addNotebook(String userName, String redisValueString);
 
 	void deleteNewAdded(String userName);
+	
+	boolean updateNotebook(String userName,String oldNotebookString,String newNotebookString);
+	
+	boolean deleteNotebook(String rowKey, String userName, String notebookName, String createTime, String status);
+	
+	
+	//根据hbase中数据更新redis
+	boolean updateNotebookList(String userName,List<Notebook> notebooks);
+
+
+
+	
 
 }

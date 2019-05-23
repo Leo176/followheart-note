@@ -7,7 +7,10 @@
 <title>Insert title here</title>
 </head>
 <body>
-<p>${isSuccessful}</p>
-<p>${isSuccessful}</p>
+<p>新建笔记本成功？---${isSuccessful}</p>
+<p>笔记本名称为---${notebookName}</p>
+<p>笔记本rowkey为---${newNoteookRowkey}</p>
+
+<a href="/" id="index">返回首页</a>
 </body>
 </html>

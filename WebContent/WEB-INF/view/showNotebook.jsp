@@ -8,5 +8,7 @@
 </head>
 <body>
 ${allNoteBook}
+
+<a href="/" id="index">返回首页</a>
 </body>
 </html>

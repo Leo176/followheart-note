@@ -7,11 +7,9 @@
 <title>Insert title here</title>
 </head>
 <body>
-<p>新建笔记成功？---${isSuccessful}</p>
-<p>$存放的笔记本rowkey为---${nbRowkey}</p>
-<p>$笔记rowkey为---${nRowkey}</p>
-<p>$笔记名称为---${noteName}</p>
-
+<p>修改笔记本成功？---${isSuccessful}</p>
+<p>$笔记本新名称为---${newNotebookName}</p>
+<p>$笔记本rowkey为---${rowkey}</p>
 
 <a href="/" id="index">返回首页</a>
 </body>

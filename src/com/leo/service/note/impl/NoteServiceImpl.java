@@ -15,6 +15,7 @@ import com.leo.dao.note.RedisDao;
 import com.leo.domain.note.Notebook;
 import com.leo.service.note.NoteService;
 import com.leo.util.Constants;
+import com.leo.util.RowkeyUtil;
 
 @Service
 public class NoteServiceImpl implements NoteService {
@@ -41,7 +42,8 @@ public class NoteServiceImpl implements NoteService {
 		//从redis中获取失败,则从hbase中获取
 		//  1 如果皆为空则说明真的为空，无需更新至redis中
 		//  2否则更新至redis中
-		if(notebookList1==null) {
+		if(notebookList1.isEmpty()) {
+			System.out.println("从redis中获取失败,从hbase中获取");
 			ResultScanner results=hbaseDao.getAllNotebooks(userName);
 			//逐条读取至Notebook Bean中
 			for(Result result:results) {
@@ -61,6 +63,10 @@ public class NoteServiceImpl implements NoteService {
 			}
 			else {
 				//更新redis
+				if(redisDao.updateNotebookList(userName,notebookList2))
+					System.out.println("根据hbase更新redis数据成功！");
+				else
+					System.out.println("根据hbase更新redis数据失败！");
 			}
 			return notebookList2;
 		}
@@ -68,17 +74,22 @@ public class NoteServiceImpl implements NoteService {
 			return notebookList1;
 		}
 	}
-
+/**
+ * 添加新的笔记本(注意事务操作)
+ * 
+ */
 	@Override
-	public boolean addNotebook(String userName,String rowkey, String notebookName,Long createTime,int status) {
-		// TODO Auto-generated method stub
+	public boolean addNotebook(String userName,String rowkey, String notebookName, String createTime,String status) {
+		
 		//构建redisValueString
+		
 		String redisValueString=rowkey+Constants.REDIS_SPLIT+notebookName+Constants.REDIS_SPLIT+createTime
 				+Constants.REDIS_SPLIT+status;
 		boolean isRedisSuccessful=redisDao.addNotebook(userName,redisValueString);
 		//如果redis失败，整个过程失败
 		if(!isRedisSuccessful)
 			return false;
+		//redis成功，则进行hbase操作
 		boolean isHbaseSuccessful=hbaseDao.addNotebook(rowkey,notebookName,createTime,status);
 		//皆成功
 		if(isRedisSuccessful&&isHbaseSuccessful)
@@ -90,12 +101,109 @@ public class NoteServiceImpl implements NoteService {
 		}
 	}
 
+	
+	/**
+	 * 修改笔记本名称
+	 * 
+	 * 
+	 */
 	@Override
-	public boolean addNote(String nbRowkey, String nRowkey, String noteName, Long createTime, int status) {
+	public boolean updateNotebook(String userName,String createTime,String status, String oldNotebookName, String newNotebookName) {
+		
+				String oldNotebookString=userName+Constants.rowkey_split+createTime+Constants.REDIS_SPLIT+oldNotebookName
+						+Constants.REDIS_SPLIT+createTime+Constants.REDIS_SPLIT+status;
+				String newNotebookString=userName+Constants.rowkey_split+createTime+Constants.REDIS_SPLIT+newNotebookName
+						+Constants.REDIS_SPLIT+createTime+Constants.REDIS_SPLIT+status;
+				
+				boolean isRedisSuccessful=redisDao.updateNotebook(userName,oldNotebookString,newNotebookString);
+				
+				//如果redis失败，整个过程失败
+				if(!isRedisSuccessful)
+					return false;
+				
+				//redis成功，则进行hbase操作
+				boolean isHbaseSuccessful=hbaseDao.updateNotebook(userName, createTime, status, oldNotebookName, newNotebookName);
+				
+				//皆成功
+				if(isRedisSuccessful&&isHbaseSuccessful)
+					return true;
+				
+				//redis成功  hbase失败：redis中的内容复原(即反向修改)
+				else{
+					redisDao.updateNotebook(userName, newNotebookString, oldNotebookString);
+					return false;
+				}
+	}
+	
+	/**
+	 * 删除笔记本
+	 * 
+	 * 
+	 */
+	@Override
+	public boolean deleteNotebook(String rowKey,String userName,String notebookName, String createTime,String status) {
+		
+		String rowkey=RowkeyUtil.getRowkey(userName, createTime);
+		
+		boolean isRedisSuccessful=redisDao.deleteNotebook(rowkey, userName, notebookName, createTime, status);
+		
+		//如果redis失败，整个过程失败
+		if(!isRedisSuccessful)
+			return false;
+		
+		//redis成功，则进行hbase操作
+		boolean isHbaseSuccessful=hbaseDao.deleteNotebook(rowkey);
+		
+		//皆成功
+		if(isRedisSuccessful&&isHbaseSuccessful)
+			return true;
+		
+		//redis成功  hbase失败,redis重新增加回刚被删除的记录
+		else{
+			
+			addNotebook(userName, rowkey, notebookName, createTime, status);
+			return false;
+		}
+	}
+	
+	/**
+	 * 新增Note
+	 */
+	@Override
+	public boolean addNote(String nbRowkey, String nRowkey, String noteName, String createTime, String status) {
 		// TODO Auto-generated method stub
+		
 		//notebook表中的notelist(nl)列添加信息
-		boolean isSuccessful=hbaseDao.addNotebookList(nbRowkey,nRowkey,noteName,createTime,status);
-		return isSuccessful;
+		boolean addToNotebookTable=hbaseDao.addNotebookList(nbRowkey,nRowkey,noteName,createTime,status);
+		//note表中添加一行数据
+		boolean addToNoteTable=hbaseDao.addToNoteTable(nRowkey, noteName, createTime, status);
+		
+		/**
+		 * 事务管理暂未编写
+		 */
+		return (addToNotebookTable&&addToNoteTable);
+	}
+	
+	/**
+	 * 修改Note
+	 */
+	@Override
+	public boolean updateNote(String nbRowkey, String nRowkey, String oldNoteName
+			,String newNoteName, String createTime, String status) {
+		
+		boolean updataToNotebookTable=true;
+		//修改了Note的名字则notebook表中也需修改，否则只需修改note表即可
+		if(!oldNoteName.equals(newNoteName))
+			//notebook表中的notelist(nl)列修改信息
+			updataToNotebookTable=hbaseDao.updateNotebookList(nbRowkey, nRowkey, oldNoteName, newNoteName, createTime, status);
+		
+		//note表中修改数据
+		boolean updateToNoteTable=hbaseDao.updateToNoteTable(nRowkey, newNoteName, createTime, status);
+		
+		/**
+		 * 事务管理暂未编写
+		 */
+		return (updataToNotebookTable&&updateToNoteTable);
 	}
 
 }
