@@ -2,6 +2,7 @@ package com.leo.dao.note;
 
 import java.util.List;
 
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 
 import com.leo.domain.note.Notebook;
@@ -20,11 +21,20 @@ public interface HbaseDao {
 	
 	boolean addNotebookList(String nbRowkey, String nRowkey, String noteName, String createTime, String status);
 
-	boolean addToNoteTable(String nRowkey, String noteName, String createTime, String status);
+	boolean addToNoteTable(String nRowkey, String noteName, String createTime, String status,String content);
 
 	boolean updateNotebookList(String nbRowkey, String nRowkey, String oldNoteName, String newNoteName,
 			String createTime, String status);
 
-	boolean updateToNoteTable(String nRowkey, String newNoteName, String createTime, String status);
+	boolean updateToNoteTable(String nRowkey, String newNoteName, String createTime, String status, String content);
+
+	String getNoteListByNotebook(String rowkey);
+
+	Result getNoteByRowkey(String nRowkey);
+
+	boolean deleteNoteInNotebookTable(String nbRowkey, String nRowkey, String oldNoteName, String createTime,
+			String status);
+
+	boolean deleteNoteInNoteTable(String nRowkey);
 
 }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.leo.dao.note.HbaseDao;
 import com.leo.dao.note.RedisDao;
+import com.leo.domain.note.Note;
 import com.leo.domain.note.Notebook;
 import com.leo.service.note.NoteService;
 import com.leo.util.Constants;
@@ -48,8 +49,8 @@ public class NoteServiceImpl implements NoteService {
 			//逐条读取至Notebook Bean中
 			for(Result result:results) {
 				Notebook book=new Notebook();
-				book.setRowkey(Bytes.toString(result.getRow())); //rowkey
-				book.setNotebookName(Bytes.toString(result.getValue(
+				book.setRowKey(Bytes.toString(result.getRow())); //rowkey
+				book.setName(Bytes.toString(result.getValue(
 						Bytes.toBytes(Constants.NOTEBOOK_FAMILY), Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NAME))));
 				book.setCreateTime(Bytes.toString(result.getValue(
 						Bytes.toBytes(Constants.NOTEBOOK_FAMILY), Bytes.toBytes(Constants.NOTEBOOK_COLUMN_CREATETIME))));
@@ -167,16 +168,46 @@ public class NoteServiceImpl implements NoteService {
 	}
 	
 	/**
+	 * 通过笔记本的rowKey获取笔记列表
+	 * @param rowkey
+	 */
+	@Override
+	public List<Note> getNoteListByNotebook(String rowkey) {
+		// TODO Auto-generated method stub
+		//返回查询的notelist字符串
+		List<Note>noteList =new ArrayList<Note>();
+		String noteListString=hbaseDao.getNoteListByNotebook(rowkey);
+		//字符串为空时
+		if(noteListString==null || noteListString.length() == 0) {
+			System.out.println("NoteService中通过笔记本的rowKey获取笔记列表得到的字符串notelist为空---------");
+			return noteList;
+	}
+		//字符串不为空时
+		else {
+			String[]notes=noteListString.split(",");
+			for(String noteString:notes) {
+				//避免出现空
+				if(noteString.length()!=0) {
+				String[]info=noteString.split("\\"+Constants.REDIS_SPLIT);
+				Note note=new Note(info[0], info[1], info[2], info[3]);
+				noteList.add(note);
+				}
+			}
+		}
+			return noteList;
+	}
+	
+	/**
 	 * 新增Note
 	 */
 	@Override
-	public boolean addNote(String nbRowkey, String nRowkey, String noteName, String createTime, String status) {
+	public boolean addNote(String nbRowkey, String nRowkey, String noteName, String createTime, String status,String content) {
 		// TODO Auto-generated method stub
 		
 		//notebook表中的notelist(nl)列添加信息
 		boolean addToNotebookTable=hbaseDao.addNotebookList(nbRowkey,nRowkey,noteName,createTime,status);
-		//note表中添加一行数据
-		boolean addToNoteTable=hbaseDao.addToNoteTable(nRowkey, noteName, createTime, status);
+		//note表中添加一行数据(由于是新增，所以内容设为空)
+		boolean addToNoteTable=hbaseDao.addToNoteTable(nRowkey, noteName, createTime, status,content);
 		
 		/**
 		 * 事务管理暂未编写
@@ -189,7 +220,7 @@ public class NoteServiceImpl implements NoteService {
 	 */
 	@Override
 	public boolean updateNote(String nbRowkey, String nRowkey, String oldNoteName
-			,String newNoteName, String createTime, String status) {
+			,String newNoteName, String createTime, String status,String content) {
 		
 		boolean updataToNotebookTable=true;
 		//修改了Note的名字则notebook表中也需修改，否则只需修改note表即可
@@ -198,12 +229,126 @@ public class NoteServiceImpl implements NoteService {
 			updataToNotebookTable=hbaseDao.updateNotebookList(nbRowkey, nRowkey, oldNoteName, newNoteName, createTime, status);
 		
 		//note表中修改数据
-		boolean updateToNoteTable=hbaseDao.updateToNoteTable(nRowkey, newNoteName, createTime, status);
+		boolean updateToNoteTable=hbaseDao.updateToNoteTable(nRowkey, newNoteName, createTime, status,content);
 		
 		/**
 		 * 事务管理暂未编写
 		 */
 		return (updataToNotebookTable&&updateToNoteTable);
 	}
+	
+	/**
+	 * 通过笔记的rowKey获取笔记详情(包括内容)
+	 * @param noteRowkey
+	 */
+	@Override
+	public Note getNoteByRowkey(String noteRowkey) {
+		//调用hbaseDao接口获得Result
+		Result result=hbaseDao.getNoteByRowkey(noteRowkey);
+		if(result.isEmpty()) {
+			System.out.println("note表中不存在该条笔记");
+			return null;
+		}
+		else {
+			Note note=new Note();
+			note.setRowKey(Bytes.toString(result.getRow())); //rowkey
+			note.setName(Bytes.toString(result.getValue(
+					Bytes.toBytes(Constants.NOTE_INFO_FAMILY), Bytes.toBytes(Constants.NOTE_COLUMN_NAME))));
+			note.setCreateTime(Bytes.toString(result.getValue(
+					Bytes.toBytes(Constants.NOTE_INFO_FAMILY), Bytes.toBytes(Constants.NOTE_COLUMN_CREATETIME))));
+			note.setStatus(Bytes.toString(result.getValue(
+					Bytes.toBytes(Constants.NOTE_INFO_FAMILY), Bytes.toBytes(Constants.NOTE_COLUMN_STATUS))));
+			note.setContent(Bytes.toString(result.getValue(
+					Bytes.toBytes(Constants.NOTE_CONTENT_FAMILY), Bytes.toBytes(Constants.NOTE_COLUMN_CONTENT))));
+			System.out.println("Service中通过笔记的rowKey获取笔记详情 Note："+note);
+			return note;
+		}
+	}
+	/**
+	 * 删除笔记
+	 */
+	@Override
+	public boolean deleteNote(String noteBookRowkey, String noteRowKey, String oldNoteName) {
+		
+		String createTime=RowkeyUtil.getCreateTimeFromRowkey(noteRowKey);
+		
+		//notebook表中的notelist(nl)列删除信息
+		boolean deleteInNotebookTable=hbaseDao.deleteNoteInNotebookTable(noteBookRowkey, noteRowKey, oldNoteName
+				, createTime, "0");
+		
+		//note表中修改数据
+		boolean deleteInNoteTable=hbaseDao.deleteNoteInNoteTable(noteRowKey);
+		
+		/**
+		 * 事务管理暂未编写
+		 * 
+		 * 
+		 */
+		return (deleteInNotebookTable&&deleteInNoteTable);
+	}
+	
+	/**
+	 * 移动并删除笔记,适用于删除到垃圾箱、笔记迁移
+	 */
+	@Override
+	public boolean moveAndDeleteNote(String noteRowKey, String oldNoteBookRowkey, String newNoteBookRowkey,
+			String noteName) {
+		
+		String createTime=RowkeyUtil.getCreateTimeFromRowkey(noteRowKey);
+		
+		//在源笔记本中删除该笔记
+		boolean isSucc1=hbaseDao.deleteNoteInNotebookTable(oldNoteBookRowkey, noteRowKey, noteName, createTime, "0");
+		//在目标笔记本中增加该笔记
+		boolean isSucc2=hbaseDao.addNotebookList(newNoteBookRowkey, noteRowKey, noteName, createTime, "0");
+		
+		/**
+		 * 事务管理暂未编写
+		 * 
+		 * 
+		 */
+		
+		return (isSucc1&&isSucc2);
+	}
+	
+	/**
+	 * 收藏笔记
+	 * 
+	 * @param starNBRowKey
+	 * @param noteRowKey
+	 * @return
+	 */
+	
+	@Override
+	public boolean starOtherNote(String noteRowKey, String starNBRowKey) {
+		
+		//先从note表中将特定笔记的信息读出来
+		Note note=getNoteByRowkey(noteRowKey);
+		//借助hbaseDao中的方法addNotebookList
+		//在notebook表中rowkey为 user_star的笔记本中添加特定的笔记信息(即在列notelist中append特定的string即可)
+		return hbaseDao.addNotebookList(starNBRowKey, noteRowKey, note.getName(), note.getCreateTime(), note.getStatus());
+		
+	}
+	
+	
+	/**
+	 * 活动笔记
+	 */
+	@Override
+	public boolean note2Activity(String noteRowKey, String activityBookRowKey) {
+		Note note = getNoteByRowkey(noteRowKey);// 获取笔记信息
+	
+		String userName=RowkeyUtil.getUserNameFromRowkey(noteRowKey);//得到用户名
+		// 创建时间
+		Long createTimeLong = System.currentTimeMillis();
+		String createTime=createTimeLong.toString();
+		//为了在note表中新增一条记录，新构建一个rowkey
+		String newNoteRowkey=RowkeyUtil.getRowkey(userName, createTime);
+		//新增笔记，活动文件夹和note表同时增加一条记录
+		boolean addNote = addNote(activityBookRowKey, newNoteRowkey, note.getName()
+				, note.getCreateTime(), note.getStatus(),note.getContent());
+		return addNote;
+	}
+	
+
 
 }

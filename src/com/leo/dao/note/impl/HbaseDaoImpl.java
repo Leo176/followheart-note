@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import com.leo.controller.note.NoteController;
 import com.leo.dao.note.HbaseDao;
+import com.leo.domain.note.Note;
 import com.leo.domain.note.Notebook;
 import com.leo.util.Constants;
 import com.leo.util.HbaseTool;
@@ -35,8 +36,8 @@ public class HbaseDaoImpl implements HbaseDao {
 	
 	private static Logger logger = LoggerFactory.getLogger(NoteController.class);
 
-	/*通过userName从hbase中读取笔记本列表*/
 	
+	/*通过userName从hbase中读取笔记本列表*/
 	@Override
 	public ResultScanner getAllNotebooks(String userName) {
 		// TODO Auto-generated method stub
@@ -132,16 +133,58 @@ public class HbaseDaoImpl implements HbaseDao {
 		
 	}
 	
+	
+	/**
+	 * 根据笔记本的rowKey获取笔记列表，返回notelist(字符串)
+	 * @param rowkey
+	 * @return  String noteListString
+	 */
+	@Override
+	public String getNoteListByNotebook(String noteBookRowkey){
+		String noteListString=null;
+		try {
+			System.out.println("HbaseDao中根据笔记本的rowKey获取笔记列表-------------------------------");
+			Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NBTABLENAME));
+			//根据rowkey得到一行数据(即一个笔记本下的数据)
+	        Get get = new Get(Bytes.toBytes(noteBookRowkey));
+	        // 获取指定列族数据
+	        // get.addFamily(Bytes.toBytes(Constants.NOTEBOOK_FAMILY));
+	        // 获取指定列数据
+	        get.addColumn(Bytes.toBytes(Constants.NOTEBOOK_FAMILY),Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NOTELIST));
+	        Result result = table.get(get);
+	        //获取结果为空
+	        if(result.isEmpty()) {
+	        	System.out.println("HbaseDao中根据笔记本的rowKey获取笔记列表得到的结果result为空----------------");
+	        	return "";
+	        }
+	        //结果不为空
+	        else {
+	        noteListString=Bytes.toString(result.getValue(
+					Bytes.toBytes(Constants.NOTEBOOK_FAMILY), Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NOTELIST)));
+	        table.close();
+	        return noteListString;
+	        }
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.error("HbaseDao 中根据笔记本的rowKey获取笔记列表失败-------参数rowkey: " + noteBookRowkey
+						+ "查询笔记列表异常|方法:getNoteListByNotebook", e);
+				e.printStackTrace();
+				return "";
+			}
+		
+	}
+	
 	/**
 	 *添加新的笔记-----在note表中添加信息
 	 * @param nRowkey
 	 * @param notebookName
 	 * @param createTime
 	 * @param status
+	 * @param content 
 	 * @return
 	 */
 	@Override
-	public boolean addToNoteTable(String nRowkey, String noteName, String createTime, String status) {
+	public boolean addToNoteTable(String nRowkey, String noteName, String createTime, String status, String content) {
 		
 		try {
 			
@@ -154,6 +197,8 @@ public class HbaseDaoImpl implements HbaseDao {
 	        		Bytes.toBytes(Constants.NOTE_COLUMN_CREATETIME), Bytes.toBytes(createTime));
 	        put.add(Bytes.toBytes(Constants.NOTE_INFO_FAMILY), 
 	        		Bytes.toBytes(Constants.NOTE_COLUMN_STATUS), Bytes.toBytes(status));
+	        put.add(Bytes.toBytes(Constants.NOTE_CONTENT_FAMILY), 
+	        		Bytes.toBytes(Constants.NOTE_COLUMN_CONTENT), Bytes.toBytes(content));
 	        table.put(put);
 	        table.close();
 	} catch (IOException e) {
@@ -184,6 +229,7 @@ public class HbaseDaoImpl implements HbaseDao {
 		        String note=nRowkey+Constants.REDIS_SPLIT+noteName+Constants.REDIS_SPLIT+createTime
 						+Constants.REDIS_SPLIT+status;
 		        String newNoteList;
+		        //从测试结果来看并不能很好保证，也许有""，但返回的结果不能算空,所以还需对字符串进一步检测
 		        if(result.isEmpty()) {
 		        	newNoteList=note;
 		        }
@@ -191,9 +237,14 @@ public class HbaseDaoImpl implements HbaseDao {
 		        //of the hosting Cell. See getValueAsByteBuffer(byte[], byte[]), etc., or listCells() 
 		       // if you would avoid the cloning
 		        else{
+		        	
 		        	String oldNoteList=new String(result.getValue(Constants.NOTEBOOK_FAMILY.getBytes()
 		        			 ,Constants.NOTEBOOK_COLUMN_NOTELIST.getBytes()));
-		        	newNoteList=oldNoteList+","+note;
+		        	//对字符串进一步检测
+		        	if(oldNoteList==null||oldNoteList.length()==0)
+		        		newNoteList=note;
+		        	else
+		        		newNoteList=oldNoteList+","+note;
 		        }
 		    		  
 		        Put put = new Put(Bytes.toBytes(nbRowkey));
@@ -252,7 +303,10 @@ public class HbaseDaoImpl implements HbaseDao {
 			        	//得到删去之后的notelist字符串
 			        	 String newNoteList=NoteStringUtil.deleteSubString(oldNote, oldNoteList);
 			        	 //新增修改后的note
-			        	 newNoteList=newNoteList+","+newNote;
+			        	 if(newNoteList.length()==0)
+			        		 newNoteList=newNote;
+			        	 else
+			        		 newNoteList=newNoteList+","+newNote;
 			    		  
 			        Put put = new Put(Bytes.toBytes(nbRowkey));
 			        //插入新的
@@ -278,10 +332,124 @@ public class HbaseDaoImpl implements HbaseDao {
 		 */
 		@Override
 		public boolean updateToNoteTable(String nRowkey,String newNoteName,String createTime,String status
-			 ) {
-			return addToNoteTable(nRowkey, newNoteName, createTime, status);
+			,String content ) {
+			
+			return addToNoteTable(nRowkey, newNoteName, createTime, status,content);
 			
 		}
 		
+		/**
+		 * 通过笔记的rowKey获取笔记详情
+		 * @param nRowkey
+		 * @return  Result result
+		 */
+		@Override
+		public Result getNoteByRowkey(String nRowkey) {
+			Result result = null;
+			try {
+				System.out.println("HbaseDao中通过笔记的rowKey获取笔记详情----------");
+				//链接到note表
+		        Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NTABLENAME));
+		        Get get = new Get(Bytes.toBytes(nRowkey));
+		        // 获取指定列族数据
+		        // get.addFamily(Bytes.toBytes(Constants.NOTE_INFO_FAMILY));
+		        // get.addFamily(Bytes.toBytes(Constants.NOTE_CONTENT_FAMILY));
+		        // 获取指定列数据
+		        //get.addColumn(Bytes.toBytes(Constants.NOTE_INFO_FAMILY),Bytes.toBytes(Constants.NOTE_COLUMN_NAME));
+		        //get.addColumn(Bytes.toBytes(Constants.NOTE_INFO_FAMILY),Bytes.toBytes(Constants.NOTE_COLUMN_CREATETIME));
+		        //get.addColumn(Bytes.toBytes(Constants.NOTE_INFO_FAMILY),Bytes.toBytes(Constants.NOTE_COLUMN_STATUS));
+		        //get.addColumn(Bytes.toBytes(Constants.NOTE_INFO_FAMILY),Bytes.toBytes(Constants.NOTE_COLUMN_CONTENT));
+		        
+		        //获取的result数据是结果集，还需要格式化输出想要的数据才行
+		         result = table.get(get);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.error("HbaseDao中通过笔记的rowKey获取笔记详情失败-------参数nRowkey: " + nRowkey
+						+ "获取笔记详情异常|方法:getNoteByRowkey", e);
+				e.printStackTrace();
+			}
+			
+			return result;
+		}
+		
+		/**
+		 * 删除笔记-----在notebook表的notelist中删除该信息
+		 * 笔记本下的笔记列表，note之间由","隔开   （noteRowKey1|name1| createTime1| status1,noteRowKey2|name2| createTime2| status2）
+		 * @param nbRowkey
+		 * @param nRowkey
+		 * @param noteName
+		 * @param createTime
+		 * @param status
+		 * @return
+		 */
+			@Override
+			public boolean deleteNoteInNotebookTable(String nbRowkey, String nRowkey, String oldNoteName,String createTime, String status) {
+				// TODO Auto-generated method stub
+				
+				/*获取某单元格数据*/
+				/**	   * @param tableName 表名
+					   * @param rowKey 行键
+					   * @param colFamily 列族
+					   * @param col 列限定符
+				        * @throws IOException     */
+				try {
+					System.out.println("hbaseDao在notebook表的notelist中删除特定的note信息--------");
+				        Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NBTABLENAME));
+				        Get get = new Get(Bytes.toBytes(nbRowkey));
+				        //获取某nl列信息
+					    get.addColumn(Bytes.toBytes(Constants.NOTEBOOK_FAMILY),Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NOTELIST));
+				        //获取的result数据是结果集，还需要格式化输出想要的数据才行
+				        Result result = table.get(get);
+				        String noteString=nRowkey+Constants.REDIS_SPLIT+oldNoteName+Constants.REDIS_SPLIT+createTime
+								+Constants.REDIS_SPLIT+status;
+				       // Get the latest version of the specified column. Note: this call clones the value content
+				        //of the hosting Cell. See getValueAsByteBuffer(byte[], byte[]), etc., or listCells() 
+				       // if you would avoid the cloning
+				        
+				       //得到原notelist字符串
+				        	String oldNoteList=new String(result.getValue(Constants.NOTEBOOK_FAMILY.getBytes()
+						        			 ,Constants.NOTEBOOK_COLUMN_NOTELIST.getBytes()));
+				        	System.out.println("notelist中删除数据：旧的notelist为："+oldNoteList);
+				        	//得到删去之后的notelist字符串
+				        	 String newNoteList=NoteStringUtil.deleteSubString(noteString, oldNoteList);
+				        	 System.out.println("notelist中删除数据：新的notelist为："+newNoteList);
+				        
+				        Put put = new Put(Bytes.toBytes(nbRowkey));
+				        //插入新的
+				        put.add(Bytes.toBytes(Constants.NOTEBOOK_FAMILY), 
+				        		Bytes.toBytes(Constants.NOTEBOOK_COLUMN_NOTELIST), Bytes.toBytes(newNoteList));
+				        table.put(put);
+				        table.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					logger.error("HbaseDao在notebook表的notelist中删除note信息失败-------参数nRowkey: " + nRowkey
+							+ "删除note信息失败|方法:deleteNoteInNotebookTable", e);
+					e.printStackTrace();
+					return false;
+				}
+				return true;
+			}
+			/**
+			 * 删除笔记-----在note表中删除该信息
+			 * @param nRowkey
+			 * @return
+			 */
+			@Override
+			public boolean deleteNoteInNoteTable(String nRowkey) {
+				try {
+					Table table = HbaseTool.connection.getTable(TableName.valueOf(Constants.NTABLENAME));
+					Delete deleteRow = new Delete(Bytes.toBytes(nRowkey)); //删除一个行
+					table.delete(deleteRow);
+					}catch (IOException e) {
+						// TODO Auto-generated catch block
+						logger.error("HbaseDao中删除笔记-在note表中删除该信息-------nRowkey" + nRowkey
+								+ "删除笔记异常|方法:deleteNoteInNoteTable", e);
+						e.printStackTrace();
+						return false;
+					}
+
+					return true;
+			}
+
 
 }

@@ -11,9 +11,9 @@ import lombok.RequiredArgsConstructor;
 @NoArgsConstructor
 public class Notebook {
 	//rowkey
-	private String rowkey;
+	private String rowKey;
 	//notebookname（nbn）:笔记本名称
-	private String notebookName;
+	private String name;
 	//createTime（ct）:创建时间
 	private String createTime;
 	//status（st）:状态

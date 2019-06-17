@@ -19,10 +19,10 @@ public class Constants {
 	public static String REDIS_SPLIT; //分隔符
 
 
-	public static String USER_INFO="user_info";
+	public static String USER_INFO="userinfo";
 	
 	//笔记本配置
-	public static String NBTABLENAME="notebook";   //hbase中笔记本的表名
+	public static String NBTABLENAME="notebook7";   //hbase中笔记本的表名
 	public static String NOTEBOOK_FAMILY="nbinfo";    //hbase中笔记本表的列族名
 	public static String NOTEBOOK_COLUMN_NAME="nbn";    //hbase中笔记本表的列名-笔记本名称
 	public static String NOTEBOOK_COLUMN_CREATETIME="ct";    //hbase中笔记本表的列名-创建时间
@@ -31,9 +31,9 @@ public class Constants {
 	
 	
 	//笔记配置
-		public static String NTABLENAME="note";   //hbase中笔记的表名
+		public static String NTABLENAME="note7";   //hbase中笔记的表名
 		public static String NOTE_INFO_FAMILY="ninfo";    //hbase中笔记表的列族名---info
-		public static String NOTE_CONTENT_FAMILY="ninfo’";    //hbase中笔记表的列族名----content
+		public static String NOTE_CONTENT_FAMILY="ncontent";    //hbase中笔记表的列族名----content
 		public static String NOTE_COLUMN_NAME="nn";    //hbase中笔记表的列名-笔记本名称
 		public static String NOTE_COLUMN_CREATETIME="ct";    //hbase中笔记表的列名-创建时间
 		public static String NOTE_COLUMN_STATUS="st";    //hbase中笔记表的列名-状态
@@ -45,9 +45,9 @@ public class Constants {
 	public static String rowkey_split="_";
 	
 	/**特殊笔记文件夹的标记*/
-	public static String STAR=rowkey_split+"star";  //收藏夹 user_star
-	public static String RECYCLE=rowkey_split+"recycle";  //回收站 user_recycle
-	public static String ACTIVITY=rowkey_split+"activity";  //活动夹  user_activity
+	public static String RECYCLE=rowkey_split+"0000000000000";  //回收站 user_recycle
+	public static String STAR=rowkey_split+"0000000000001";  //收藏夹 user_star
+	public static String ACTIVITY=rowkey_split+"00000000000002";  //活动夹  user_activity
 	
 
 	

@@ -16,6 +16,16 @@ public class RowkeyUtil {
 		return userName+Constants.rowkey_split+createTime;
 	}
 	
+	//由rowKey得createTime
+	public static String getCreateTimeFromRowkey(String rowKey) {
+		String[]splits=rowKey.split(Constants.rowkey_split);
+		return splits[1];
+	}
 	
+	//由rowKey得userName
+		public static String getUserNameFromRowkey(String rowKey) {
+			String[]splits=rowKey.split(Constants.rowkey_split);
+			return splits[0];
+		}
 
 }

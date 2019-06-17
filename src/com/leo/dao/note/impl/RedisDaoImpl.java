@@ -33,8 +33,8 @@ public class RedisDaoImpl implements RedisDao {
 			System.out.println("bookstring:  "+bookString);
 			Notebook notebook = new Notebook();
 			String[]splits=bookString.split("\\"+Constants.REDIS_SPLIT);
-			notebook.setRowkey(splits[0]);
-			notebook.setNotebookName(splits[1]);
+			notebook.setRowKey(splits[0]);
+			notebook.setName(splits[1]);
 			notebook.setCreateTime(splits[2]);
 			notebook.setState(splits[3]);
 			notebookList.add(notebook);
@@ -103,7 +103,7 @@ public class RedisDaoImpl implements RedisDao {
 		// TODO Auto-generated method stub
 		System.out.println("根据hbase中数据更新redis---------");
 		for(Notebook book:notebooks) {
-		String redisValueString=book.getRowkey()+Constants.REDIS_SPLIT+book.getNotebookName()+Constants.REDIS_SPLIT
+		String redisValueString=book.getRowKey()+Constants.REDIS_SPLIT+book.getName()+Constants.REDIS_SPLIT
 				+book.getCreateTime()+Constants.REDIS_SPLIT+book.getState();
 		
 		if(!addNotebook(userName, redisValueString)) {

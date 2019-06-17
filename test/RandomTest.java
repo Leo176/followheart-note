@@ -1,3 +1,5 @@
+import org.yecht.Data.Str;
+
 import com.leo.domain.note.Notebook;
 import com.leo.util.Constants;
 
@@ -10,13 +12,6 @@ public class RandomTest {
 		//Long createTime = System.currentTimeMillis();
 		//System.out.println(createTime);
 		
-		//测试lombok插件
-		//Notebook notebook=new Notebook("ghj", "sd", "d", "d","d");
-		//Notebook notebook=new Notebook();
-		//notebook.setNotebookName("hello");
-		//System.out.println(notebook.getClass());
-		//System.out.println(notebook);
-		
 		
 		//  用于测试转义   结果表明只有|需要强行转义  加\\     _可转可不转
 		/** 
@@ -27,22 +22,30 @@ public class RandomTest {
 			System.out.println(a);
 		}
 		*/
-		/**
-		String aString;
-		String bString;
-		String cString="dfs";
-		aString="dfs";
-		//bString="dfs";
-		bString=cString;
-		if(aString==bString)
-			System.out.println(true);
-		else
-			System.out.println(false);
-		if(aString.equals(bString))
-			System.out.println(true);
-		else
-			System.out.println(false);
-			*/
+		
+		/*//测试null和""的区别
+		String a="";
+		System.out.println("The length of a: "+a.length());
+		String b=null;
+		System.out.println("The length of b: "+b.length());*/
+		
+	/*	//测试string.split
+		String liString="";
+		String[]splits=liString.split(",");
+		System.out.println("length: "+splits.length );
+		for(String split:splits) {
+			System.out.println("run----");
+			System.out.println(split);
+		}*/
+		/*String aString="abc";
+		StringBuffer sb = new StringBuffer(aString);
+		sb.delete(0, 1);
+		aString=new String(sb);
+		System.out.println(aString);*/
+		
+		 byte[]a=null;
+		 System.out.println(a.length);
+
 	}
 
 }
